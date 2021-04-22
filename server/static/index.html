@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>MongoDBテスト</title>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2.5.22/dist/vue.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.0.4/vue.global.js"></script>
   <script src="https://unpkg.com/vue-types"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.10/lodash.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.0/axios.min.js"></script>
   <style>
     * {
@@ -29,7 +28,7 @@
       margin-top: 10px;
       border: solid 1px #ddd;
       border-radius: 5px;
-      box-shadow: 0 0 10px 0 rgba(#000, 0.1);
+      box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
       cursor: pointer;
     }
 
@@ -39,7 +38,7 @@
     }
 
     /* 要素が入るときのアニメーション */
-    .flip-enter-active {
+    .flip-enter-from {
       opacity: 0;
       transform: translate3d(0, -30px, 0);
     }
@@ -52,6 +51,10 @@
     .flip-leave-active {
       position: absolute;
     }
+    .flip-leave-from {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
     .flip-leave-to {
       opacity: 0;
       transform: translate3d(0, -30px, 0);
@@ -61,6 +64,8 @@
 <body>
   <div id="app"></div>
   <script>
+    const { reactive, onBeforeMount } = Vue;
+
     // APIリクエストの設定
     const api = axios.create({
       baseURL: '/api',
@@ -71,57 +76,48 @@
      * 入力フォームコンポーネント
      */
     const InputForm = {
-      data() {
-        return {
-          text: '',
-        };
-      },
-      methods: {
-        /**
-         * 送信時
-         * @param {event} event - DOMのイベント
-         */
-        onSubmit(event) {
-          event.preventDefault();
-          this.$emit('submit', this.$data.text);
-          this.$data.text = '';
-        }
-      },
       template: `
         <form @submit="onSubmit">
-          <input v-model="$data.text" type="text" placeholder="TODO" />
-          <button type="submit" :disabled="$data.text === ''">送信</button>
+          <input v-model="state.text" type="text" placeholder="TODO" />
+          <button type="submit" :disabled="state.text === ''">送信</button>
         </form>
-      `
+      `,
+      emits: {
+        submit: (text) => {
+          return text != null;
+        },
+      },
+      setup(props, context) {
+        const state = reactive({
+          text: '',
+        });
+
+        return {
+          state,
+          /**
+           * 送信時
+           * @param {event} event - DOMのイベント
+           */
+          onSubmit(event) {
+            event.preventDefault();
+            context.emit('submit', state.text);
+            state.text = '';
+          },
+        };
+      },
     };
 
     /**
      * TODOリストコンポーネント
      */
     const TodoList = {
-      props: {
-        todoList: VueTypes.arrayOf(VueTypes.shape({
-          _id: VueTypes.string.isRequired,
-          isDone: VueTypes.bool.isRequired,
-          text: VueTypes.string.isRequired
-        }).loose).isRequired
-      },
-      methods: {
-        /**
-         * 削除ボタンをクリックした時
-         * @param {event} event - DOMのイベント
-         * @param {number} todoId - TODOのID
-         */
-        onDeleteTodo(event, todoId) {
-          event.stopPropagation();
-          this.$emit('delete', todoId);
-        }
-      },
       template: `
         <transition-group tag="ul" class="list" name="flip">
-          <template v-for="item in $props.todoList">
+          <template
+            v-for="item in $props.todoList"
+            :key="item._id"
+          >
             <li
-              :key="item._id"
               class="item"
               @click="$emit('check', item._id, !item.isDone)"
             >
@@ -131,66 +127,38 @@
             </li>
           </template>
         </transition-group>
-      `
-    };
-
-    new Vue({
-      el: '#app',
-      components: {
-        InputForm,
-        TodoList,
+      `,
+      emits: {
+        check: (todoId, isChecked) => {
+          return todoId != null && isChecked != null;
+        },
+        delete: (todoId) => {
+          return todoId != null;
+        },
       },
-      data() {
+      props: {
+        todoList: VueTypes.arrayOf(VueTypes.shape({
+          _id: VueTypes.string.isRequired,
+          isDone: VueTypes.bool.isRequired,
+          text: VueTypes.string.isRequired
+        }).loose).isRequired
+      },
+      setup(props, context) {
         return {
-          todoList: [],
+          /**
+           * 削除ボタンをクリックした時
+           * @param {event} event - DOMのイベント
+           * @param {number} todoId - TODOのID
+           */
+          onDeleteTodo(event, todoId) {
+            event.stopPropagation();
+            context.emit('delete', todoId);
+          },
         };
       },
-      created() {
-        this.fetchTodoList();
-      },
-      methods: {
-        fetchTodoList() {
-          api.get('/todos')
-            .then((response) => {
-              this.$data.todoList = response.data;
-            });
-        },
-        /**
-         * 送信された時
-         * @param {string} text - テキスト
-         */
-        onSubmit(text) {
-          api.post('/todos', {
-            text,
-          })
-            .then(() => {
-              this.fetchTodoList();
-            });
-        },
-        /**
-         * TODOのチェック
-         * @param {number} todoId - TODOのID
-         * @param {boolean} isNextDone - 次更新する終了ステータス
-         */
-        onCheckTodo(todoId, isNextDone) {
-          api.put(`/todos/check/${todoId}`, {
-            isDone: isNextDone,
-          })
-            .then(() => {
-              this.fetchTodoList();
-            });
-        },
-        /**
-         * TODOの削除ボタンがクリックされた時
-         * @param {number} todoId - TODOのID
-         */
-        onDeleteTodo(todoId) {
-          api.delete(`/todos/${todoId}`)
-            .then(() => {
-              this.fetchTodoList();
-            });
-        },
-      },
+    };
+
+    const app = Vue.createApp({
       template: `
         <div>
           <InputForm
@@ -198,13 +166,66 @@
           />
           <p>TODO LIST</p>
           <TodoList
-            :todoList="$data.todoList"
+            :todoList="state.todoList"
             @check="onCheckTodo"
             @delete="onDeleteTodo"
           />
         </div>
       `,
+      components: {
+        InputForm,
+        TodoList,
+      },
+      setup() {
+        const state = reactive({
+          todoList: [],
+        });
+
+        const fetchTodoList = async () => {
+          const response = await api.get('/todos');
+          state.todoList = response.data;
+        };
+
+        onBeforeMount(async () => {
+          await fetchTodoList();
+        });
+
+        return {
+          state,
+          /**
+           * 送信された時
+           * @param {string} text - テキスト
+           */
+          async onSubmit(text) {
+            await api.post('/todos', {
+              text,
+            });
+            await fetchTodoList();
+          },
+          /**
+           * TODOのチェック
+           * @param {number} todoId - TODOのID
+           * @param {boolean} isNextDone - 次更新する終了ステータス
+           */
+          async onCheckTodo(todoId, isNextDone) {
+            await api.put(`/todos/check/${todoId}`, {
+              isDone: isNextDone,
+            });
+            await fetchTodoList();
+          },
+          /**
+           * TODOの削除ボタンがクリックされた時
+           * @param {number} todoId - TODOのID
+           */
+          async onDeleteTodo(todoId) {
+            await api.delete(`/todos/${todoId}`);
+            await fetchTodoList();
+          },
+        }
+      },
     });
+
+    app.mount('#app');
   </script>
 </body>
 </html>
