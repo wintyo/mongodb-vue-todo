@@ -1,0 +1,16 @@
+{
+  "name": "mongodb-react-todo",
+  "version": "1.0.0",
+  "description": "",
+  "engines": {
+    "node": ">=14.15.0"
+  },
+  "main": "index.js",
+  "scripts": {
+    "_MongoDBの起動・停止": "",
+    "mongodb:start": "cd mongodb && docker-compose up -d && cd ..",
+    "mongodb:stop": "cd mongodb && docker-compose down && cd .."
+  },
+  "author": "wintyo <wintyo1024@gmail.com>",
+  "license": "MIT"
+}
