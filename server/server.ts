@@ -15,7 +15,16 @@ if (process.env.NODE_ENV !== 'production') {
     useUnifiedTopology: true,
     user: MONGODB_USERNAME,
     pass: MONGODB_PASSWORD,
-    dbName: 'todo',
+    dbName: 'todo-app',
+  })
+    .catch((err) => {
+      console.error(err);
+    });
+} else {
+  mongoose.connect(process.env.MONGODB_URI || '', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    dbName: 'todo-app',
   })
     .catch((err) => {
       console.error(err);
