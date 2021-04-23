@@ -1,5 +1,5 @@
 {
-  "name": "mongodb-react-todo",
+  "name": "mongodb-vue-todo",
   "version": "1.0.0",
   "description": "",
   "engines": {
@@ -12,7 +12,9 @@
     "server:build": "cross-env TS_NODE_PROJECT=tsconfig-for-node.json webpack-cli bundle --config server/webpack.config.server.ts",
     "_MongoDB関係": "",
     "mongodb:start": "cd mongodb && docker-compose up -d && cd ..",
-    "mongodb:stop": "cd mongodb && docker-compose down && cd .."
+    "mongodb:stop": "cd mongodb && docker-compose down && cd ..",
+    "_heroku用のコマンド": "",
+    "heroku-postbuild": "yarn server:build"
   },
   "author": "wintyo <wintyo1024@gmail.com>",
   "license": "MIT",
